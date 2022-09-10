@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src = 'urlParams.js'></script>
+        <!-- <script src = 'viewer.js'></script> -->
+        <script async type = "module">
+            let params = getURLParameters();
+            
+            if (!params.type || !params.id) {
+                console.log('Missing parameters'); 
+            } else {
+                let dir = `../archives/${params.type}/${params.id}`;
+                console.log(dir);
+                let { info, members, messages, threads } = await import(dir + '/data.mjs');
+                console.log(info());
+            }   
+
+        </script>
+    </head>    
+</html>
