@@ -80,7 +80,7 @@ function labelChannel(channelInfo) {
             return 'channel';
         }
     } else if (channelInfo['is_im']) {
-        return 'DM';
+        return 'dm';
     }
     return 'unknown';
 }
