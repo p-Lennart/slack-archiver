@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src = 'urlParams.js'></script>
+        <script>
+            function setTitle(str) {
+                document.title = `Slack | ${str}`;
+            }
+
+            function getDate(slackTS) {
+                return new Date(parseFloat(slackTS) * 1000);
+            }
+
+            function getMessagesInSpan(messages, start, end) {
+                const result = [];
+                
+                for (const i of messages) {
+                    if (i.ts && i.ts < (end / 1000) && i.ts >= (start / 1000)) {
+                        result.push(i);
+                    }
+                }
+
+                return result;
+                
+            }
+            
+            function dateWidgetData(messages, dobj_end, dobj_start) {
+                const result = {};
+
+                for (var i = 0; i <= dobj_start.getFullYear() - dobj_end.getFullYear(); i++) {
+                    const months = {};
+                    var yearly = 0;
+                    
+                    var firstMonth = 0;
+                    var lastMonth = 11;
+                    
+                    if (i === 0) firstMonth = dobj_end.getMonth();
+                    if (i === dobj_start.getFullYear() - dobj_end.getFullYear()) lastMonth = dobj_start.getMonth();
+
+
+                    for (var j = firstMonth; j <= lastMonth; j++) {
+                        const days = {};
+                        var monthly = 0;
+
+                        let d = new Date(dobj_end.getFullYear() + i, j + 1, 0);
+                        let numOfDays = d.getDate();
+                        
+                        for (var k = 1; k <= numOfDays; k++) {
+                            d.setDate(k);
+                            
+                            let d_ = new Date(d); 
+                            d_.setDate(k + 1);
+                            
+                            let daily = getMessagesInSpan(messages, d.getTime(), d_.getTime());
+                            if (daily && daily.length > 0) {
+                                days[k] = [new Date(d), daily.length];
+                                monthly += daily.length;
+                            }
+                        }
+                        months[j] = [days, monthly];
+                        yearly += monthly;
+                    }
+
+                    result[dobj_end.getFullYear() + i] = [months, yearly];
+                }
+
+                return result;
+                
+            }
+
+            function setDisplay(ID, value) {
+                document.getElementById(ID).style.display = value;
+            }
+
+            function toggleCollapse(t) {
+                let contentID = t.id.split('Title').join('Content');
+                let titleMaxID = t.id + 'Max';
+                let titleMinID = t.id + 'Min';
+
+                if (document.getElementById(contentID).style.display === 'none') {
+                    setDisplay(contentID, 'block');
+                    setDisplay(titleMaxID, 'block');
+                    setDisplay(titleMinID, 'none');
+                } else {
+                    setDisplay(contentID, 'none');
+                    setDisplay(titleMaxID, 'none');
+                    setDisplay(titleMinID, 'block');
+                }
+            }
+
+        </script>
+        <!-- <script src = 'viewer.js'></script> -->
+        <script async type = "module">
+            const { jml, jml_nester } = await import('./jml.mjs');
+
+            let params = getURLParameters();
+            
+            if (!params.type || !params.id) {
+                console.log('Missing parameters'); 
+            } else {
+                let dir = `../archives/${params.type}/${params.id}`;
+                console.log(dir);
+
+                init(dir);
+            }
+
+            function dateWidgetUI(dir, messages, dobj_end, dobj_start) {
+                const data = dateWidgetData(messages, dobj_end, dobj_start);
+
+                const nodes = [];
+
+                for (const [yearNum, [months, yearly]] of Object.entries(data)) {
+                    let yearTitle = jml('button', { class: 'collapse_trigger', id: 'dNW_yearTitle' + yearNum, onClick: function() {
+                        toggleCollapse(this);
+                    }, }, 
+                        jml('h2', {}, [
+                            jml('span', { id: 'dNW_yearTitle' + yearNum + 'Max' }, yearNum),
+                            jml('span', { id: 'dNW_yearTitle' + yearNum + 'Min' }, [
+                                jml('span', {}, yearNum + ': '),
+                                jml('span', { class: 'accent' }, `${yearly} Messages`),
+                            ]),
+                        ]),
+                    );
+                    
+                    let yearContent = jml('div', { class: 'collapse_content', id: 'dNW_yearContent' + yearNum });
+                    
+                    for (const [monthNum, [days, monthly]] of Object.entries(months)) {
+
+                        let monthName = ["January", "Febuary", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][monthNum];
+                        
+                        let monthTitle = jml('button', { class: 'collapse_trigger', id: 'dNW_monthTitle' + monthNum, onClick: function() {
+                            toggleCollapse(this);
+                        }, }, 
+                            jml('h3', {}, [
+                                jml('span', { id: 'dNW_monthTitle' + monthNum + 'Max' }, monthName),
+                                jml('span', { id: 'dNW_monthTitle' + monthNum + 'Min' }, [
+                                    jml('span', {}, monthName + ': '),
+                                    jml('span', { class: 'accent' }, `${monthly} Messages`),
+                                ]),
+                            ]),
+                        );
+
+                        let monthContent = jml('ol', { class: 'collapse_content', id: 'dNW_monthContent' + monthNum, class: 'collapsible' });
+
+                        for (const [dayNum, [dayObj, messages]] of Object.entries(days)) {
+                            let dayDateStr = dayObj.toString();
+                            
+                            let dayNode = jml('li', { value: dayNum }, 
+                                jml('a', { href: `./viewer.htm?type=${params.type}&id=${params.id}&ts=${dayObj.getTime() / 1000}` }, [
+                                    jml('span', {}, `${dayDateStr.slice(0, 3)}: `),
+                                    jml('span', { class: 'accent' }, `${messages} Messages`),
+                                ])
+                            );
+                            
+                            jml_nester(monthContent, dayNode);
+
+                        }
+
+                        jml_nester(yearContent, monthTitle);
+                        jml_nester(yearContent, monthContent);
+
+                    }
+                    
+                    nodes.push(yearTitle);
+                    nodes.push(yearContent);
+                    
+                }
+                
+                return nodes;
+
+            }
+
+            function memberUI(members) {
+                const memberNodes = [];
+
+                for (const i of members) {
+                    var prettyName = i.profile['real_name'];
+                    if (i.profile['display_name'].length > 0) prettyName = i.profile['display_name'];
+
+                    let mem = jml('div', { class: 'user'}, [
+                        jml('img', { class: 'user_picture', src: i.profile['image_72'] }, ),
+                        jml('div', { class: 'user_text'}, [
+                            jml('h3', {}, prettyName),
+                            jml('h5', {}, '@' + i.name),
+                            jml('span', {}, i.profile.title),
+                        ]),
+                    ]);
+
+                    memberNodes.push(mem);
+
+                }
+
+                return memberNodes;
+
+            }
+
+            async function init(dir) {
+                const { info, members, messages, threads } = await import(dir + '/data.mjs');
+
+                console.log(members());
+                
+                if (info()['is_im'] && info().user) {
+                    let mem = members().find(member => member.id === info().user);
+                    
+                    var prettyName = mem.profile['real_name'];
+                    if (mem.profile['display_name'].length > 0) prettyName = mem.profile['display_name'];
+
+                    setTitle('@' + mem.name);
+                    document.querySelector('#channelTitle').innerHTML = prettyName;   
+                } else {
+                    setTitle('#' + info().name);
+                    document.querySelector('#channelTitle').innerHTML = info().name;
+                    document.querySelector('#channelInfo').innerHTML = info().purpose.value.replace('\n', '<br>');    
+                }
+
+                const dobj_created = getDate(info().created);
+                const dobj_oldest = getDate(messages()[messages().length - 1].ts);
+                const dobj_latest = getDate(messages()[0].ts);
+
+                document.querySelector('#channelStats').innerHTML += 'Created: ' + dobj_created;
+                document.querySelector('#channelStats').innerHTML += '<br>Oldest Message: ' + dobj_oldest;
+                document.querySelector('#channelStats').innerHTML += '<br>Latest Message: ' + dobj_latest;
+                
+                for (const node of dateWidgetUI(dir, messages(), dobj_oldest, dobj_latest)) {
+                    document.querySelector('#dateNavWidget').appendChild(node);
+                }
+
+                for (const trigger of document.querySelectorAll('button.collapse_trigger')) {
+                    toggleCollapse(trigger);
+                }
+
+                for (const memberNode of memberUI(members())) {
+                    document.querySelector('#members').appendChild(memberNode);
+                }
+            }
+
+        </script>
+        <style>
+            span.accent {
+                color: grey;
+            }
+            div {
+                margin-bottom: 10px;
+            }
+            button.collapse_trigger {
+                display: block;
+            }
+            div#members {
+                display: flex;
+                flex-direction: column;
+                float: right; 
+            }
+            div.user {
+                margin: 0px;
+                margin-bottom: 5px;
+                float: left;
+                width: 360px;
+                /* height: 128px; */
+                display: flex;
+                flex-direction: row;
+                align-items: flex-start;
+            }
+            img.user_picture {
+                vertical-align: text-top;
+                display: inline;
+            }
+            div.user_text {
+                margin-left: 5px;
+                margin-right: 2px;
+                margin-top: 0px;
+                margin-bottom: 0px;
+            }
+            div.user_text > * {
+                margin-left: 0px;
+                margin-right: 0px;
+                margin-top: 0px;
+                margin-bottom: 4px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id = 'members'></div>
+        <h1 id = 'channelTitle'></h1>
+        <h3 id = 'channelInfo'></h3>
+        <div id = 'channelStats'></div>
+        <div id = 'dateNavWidget'></div>
+    </body>
+</html>
