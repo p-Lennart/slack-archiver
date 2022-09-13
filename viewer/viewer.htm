@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src = 'urlParams.js'></script>
+        <script src = 'misc.js'></script>
+        <script async type = "module">
+            const { jml, jml_nester } = await import('./jml.mjs');
+
+            let params = getURLParameters();
+            
+            if (!params.type || !params.id) {
+                console.log('Missing parameters'); 
+            } else {
+                let dir = `../archives/${params.type}/${params.id}`;
+                console.log(dir);
+
+                init(dir, params.ts);
+            }
+
+            function renderMessage([message, members], newGroup) {
+                if (!message.type === 'message') return;
+
+                let date = getDate(message.ts);
+
+                var user;
+                if (message.subtype && message.subtype === "bot_message") {
+                    user = members.find(m => m.profile && m.profile['api_app_id'] && m.profile['api_app_id'] === message['app_id']);
+                } else if (members.find(m => m.id === message.user)) {
+                    user = members.find(m => m.id === message.user);
+                } else {
+                    user = "???";
+                }
+
+                var className = 'message_container';
+                if (!newGroup) className += '_sequel';
+                
+                return jml('tr', { id: message.user, class: className }, [
+                    jml('td', { class: 'message_ts' }, getDateString(date)),
+                    jml('td', { class: 'message_user' }, newGroup ? getPrettyName(user) : ''),
+                    jml('td', { class: 'message_content' }, parseMessageText(message)),
+                ])
+            }
+
+            async function init(dir, ts) {
+                const { info, members, messages, threads } = await import(dir + '/data.mjs');
+
+                if (info()['is_im'] && info().user) {
+                    let mem = members().find(member => member.id === info().user);
+                    
+                    setTitle('@' + mem.name);
+                    document.querySelector('#channelTitle').innerHTML = getPrettyName(mem);   
+                } else {
+                    setTitle('#' + info().name);
+                    document.querySelector('#channelTitle').innerHTML = info().name;
+                    document.querySelector('#channelInfo').innerHTML = info().purpose.value.replace('\n', '<br>');    
+                }
+
+                for (var i = messages().length - 1; i >= 0; i--) {
+                    let newGroup = (!messages()[i+1] || messages()[i].user !== messages()[i+1].user);
+                    document.querySelector('#messages').appendChild(renderMessage([messages()[i], members()], newGroup));
+                }
+                
+                // for (const memberNode of memberUI(members())) {
+                //     document.querySelector('#members').appendChild(memberNode);
+                // }
+
+            }
+
+        </script>
+        <link rel="stylesheet" href="main.css">
+    </head>
+    <body>
+        <div id = 'members'></div>
+        <h1 id = 'channelTitle'></h1>
+        <h3 id = 'channelInfo'></h3>
+        <div class = 'container'>
+            <table id = 'messages'></table>
+        </div>
+    </body>
+</html>
