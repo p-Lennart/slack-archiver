@@ -1,0 +1,102 @@
+span.accent {
+    color: grey;
+}
+
+div {
+    margin-bottom: 12px;
+}
+
+div.container table {
+    border: 1px solid;
+    width: 100%;
+    border-collapse: collapse;
+    vertical-align: text-top;
+    text-align: left;
+}
+
+table#messages tr td {
+    vertical-align: top;
+    padding: 5px;
+}
+
+table#messages tr td {
+    vertical-align: top;
+    padding: 5px;
+    padding-top: 10px;
+}
+
+table#messages tr.message_container_sequel td {
+    padding-top: 0px;
+}
+
+table#messages tr td.message_ts {
+    width: 4%;
+}
+table#messages tr td.message_user {
+    width: 9.5%;
+}
+
+
+button.collapse_trigger {
+    display: block;
+    background: none;
+    color: inherit;
+    border: none;
+    padding: 0;
+    font: inherit;
+    /* cursor: pointer; */
+    outline: inherit;
+}
+button.collapse_trigger h2 {
+    margin: 0px;
+    margin-bottom: 12px;
+}
+button.collapse_trigger h3 {
+    margin: 0px;
+    margin-bottom: 8px;
+}
+ul.collapse_content {
+    margin: 0px;
+    margin-bottom: 5px;
+    list-style: square;
+}
+ol.collapse_content {
+    margin: 0px;
+    margin-bottom: 5px;
+}
+
+div#members {
+    display: flex;
+    flex-direction: column;
+    float: right; 
+}
+div.user {
+    margin: 0px;
+    margin-bottom: 5px;
+    float: left;
+    
+    width: 360px;
+    height: 72px;
+    overflow: hidden;
+    
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+}
+div.user:hover {
+    overflow: visible;
+    height: auto;
+}
+img.user_picture {
+    vertical-align: text-top;
+    display: inline;
+}
+div.user_text {
+    margin: 0px;
+    margin-left: 5px;
+    margin-right: 2px;
+}
+div.user_text > * {
+    margin: 0px;
+    margin-bottom: 4px;
+}
