@@ -1,3 +1,6 @@
 archives/*
 tokens.json
 index.js
+.hintrc
+apiTools.js.old
+index.js

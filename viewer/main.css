@@ -7,16 +7,17 @@ div {
 }
 
 div.container table {
-    border: 1px solid;
     width: 100%;
-    border-collapse: collapse;
+
+    table-layout: fixed;
     vertical-align: text-top;
     text-align: left;
-}
+    
+    font-family: sans-serif;
+    font-size: 1em;
+    font-weight: normal;
 
-table#messages tr td {
-    vertical-align: top;
-    padding: 5px;
+    overflow: hidden;
 }
 
 table#messages tr td {
@@ -24,18 +25,55 @@ table#messages tr td {
     padding: 5px;
     padding-top: 10px;
 }
-
-table#messages tr.message_container_sequel td {
+table#messages tr.message_container.is_sequel td {
     padding-top: 0px;
 }
 
 table#messages tr td.message_ts {
     width: 4%;
-}
-table#messages tr td.message_user {
-    width: 9.5%;
+    color: grey;
+    font-weight: lighter;
+    font-size: 0.9em;
+
+    vertical-align: text-top;
+    text-align: center;
 }
 
+table#messages tr td.message_user {
+    width: 10%;
+    
+    text-align: right;
+    font-weight: bolder;
+    
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+table#messages tr td.message_content {
+    width: 88%;
+    overflow-wrap: break-word;
+}
+
+table#messages tr td.message_content figure {
+    margin: 0;
+    margin-top: 0.125em;
+    /* margin-bottom: 0.05em; */
+}
+
+table#messages tr td.message_content figure img {
+    max-height: 25em;
+    max-width: 75em;
+}
+
+table#messages tr td.message_content span.message_editTag {
+    font-size: 0.9em;
+    padding: 0;
+    padding-left: 0.4em;
+    color: grey;
+    font-weight: lighter;
+    vertical-align: text-top;
+}
 
 button.collapse_trigger {
     display: block;
@@ -44,7 +82,7 @@ button.collapse_trigger {
     border: none;
     padding: 0;
     font: inherit;
-    /* cursor: pointer; */
+    cursor: pointer;
     outline: inherit;
 }
 button.collapse_trigger h2 {

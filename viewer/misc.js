@@ -23,7 +23,7 @@ function getDateString(date) {
     let hours = date.getHours();
     let minutes = date.getMinutes(); 
     let seconds = date.getSeconds();
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}.${seconds.toString().padStart(2, '0')}`;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
 function getPrettyName(member) {
@@ -31,9 +31,4 @@ function getPrettyName(member) {
         return member.profile['display_name'];
     else 
         return member['real_name'];
-}
-
-
-function parseMessageText(message) {
-    return message.text;
 }

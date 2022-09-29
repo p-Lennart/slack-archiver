@@ -17,8 +17,79 @@
                 init(dir, params.ts);
             }
 
+            function renderMessageText(message) {
+                if (message.blocks) {
+                    try {
+                        const blocks = [];
+                        for (const block of message.blocks) {
+                            const elements = [];
+                            if (!block.elements) {
+                                console.log('Block has no elements', block);
+                                return [];
+                            }
+                            for (const element of block.elements) {
+                                const subElements = [];
+                                for (const subElement of element.elements) {
+                                    var content = '';
+                                    switch (subElement.type) {
+                                        case 'emoji':
+                                            if (subElement.unicode) {
+                                                for (const e of subElement.unicode.split('-')) {
+                                                    content += String.fromCodePoint('0x' + e);
+                                                }
+                                            } else {
+                                                content = subElement.name;
+                                            }
+                                            break;
+                                        case 'text':
+                                            content = subElement.text;
+                                    }
+                                    subElements.push(jml('span', { class: 'element_element ' + subElement.type }, content));
+                                }
+                                elements.push(jml('span', { class: 'block_element ' + element.type }, subElements));
+                            }
+                            blocks.push(jml('span', { class: 'message_block' }, elements))
+                        }
+        
+                        return blocks;
+    
+                    } catch(err) {
+                        console.error(err);
+                        console.log(message);
+                    }
+                }
+
+                return [ jml('span', {}, message.text) ];
+            }
+
+            function renderMessageFiles(message) { 
+                if (!message.files) return;
+
+                const result = [];
+
+                for (const file of message.files) {
+                    if (!file.permalink) {
+                        console.log('File missing permalink', file);
+                        continue;
+                    }
+
+                    let filename = file.permalink.split('/').pop();
+                    var path = `../archives/${params.type}/${params.id}/files/${file.id}/${filename}`;
+
+                    if (file.mimetype && file.mimetype.startsWith('image/')) {
+                        result.push(jml('img', { src: path }));
+                    }
+                }
+
+                return result;
+            }
+
             function renderMessage([message, members], newGroup) {
                 if (!message.type === 'message') return;
+
+                var className = 'message_container';
+                if (!newGroup) className += ' is_sequel';
+                if (message.edited) className += ' is_edited';
 
                 let date = getDate(message.ts);
 
@@ -31,13 +102,18 @@
                     user = "???";
                 }
 
-                var className = 'message_container';
-                if (!newGroup) className += '_sequel';
+                var content = renderMessageText(message);
+                if (message.files) {
+                    content.push(jml('figure', { class: 'message_files' }, renderMessageFiles(message)));
+                }
+                if (message.edited) {
+                    content.push(jml('span', { class: 'message_editTag' }, '(edited)'));
+                }
                 
                 return jml('tr', { id: message.user, class: className }, [
                     jml('td', { class: 'message_ts' }, getDateString(date)),
                     jml('td', { class: 'message_user' }, newGroup ? getPrettyName(user) : ''),
-                    jml('td', { class: 'message_content' }, parseMessageText(message)),
+                    jml('td', { class: 'message_content' }, content),
                 ])
             }
 
