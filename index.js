@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { generateConversationArchive } = require('./apiTools');
 
 const apiTools = require('./apiTools');
 
@@ -34,8 +35,9 @@ async function testFunction() {
     // console.log(await apiTools.getUserChannel('<USER_ID>', true));
     // apiTools.getChannelMessages('<CHANNEL_ID>', true);
     // apiTools.getChannelMessages('<CHANNEL_ID>');
-    
-    console.log(await apiTools.generateConversationArchive('<CHANNEL_ID>', true, './archives', true));
+
+    // apiTools.fetchAndWriteMessages('<CHANNEL_ID>', './archives/channel/<CHANNEL_ID>', true);
+    (await apiTools.generateConversationArchive('<CHANNEL_ID>', true, './archives', true));
     // analyzer(messages);
     // apiTools.downloadAttatchment('https://files.slack.com/files-pri/.../sample.png', './', true);
 }
