@@ -19,9 +19,10 @@ function ensureDir(dir) {
     }
 }
 
-function makeFilename(string) {
-    string = string.replace('.', '-');
-    return string;
+function makeFilename(string, removeLast) {
+    string = string.split('.');
+    if (removeLast) string = string.slice(0, -1);
+    return string.join('-');
 }
 
 function storeAsMJS(object, dir, filename) {
@@ -76,10 +77,10 @@ function labelChannel(channelInfo) {
 
 module.exports = {
 
-    downloadAttatchment: async (url_private, dir, asUser, filename) => {
+    downloadAttatchment: async (url_private, dir, filename) => {
         var tokenKey = 'bot';
         if (asUser) tokenKey = 'user';
-        await download(url_private, dir, { headers: getSlackAuthorizationHeader(asUser) }, false, filename);
+        await download(url_private, dir, { headers: getSlackAuthorizationHeader(true) }, false, filename);
     },
 
     getAccessableChannels: async (asUser) => {
@@ -87,46 +88,11 @@ module.exports = {
         return res.channels;
     },
 
-    getUsers: async (asUser) => {
-        const res = await slackMethodRequest('users.list', { pretty: 1 }, asUser); 
-        return res;
-    },
-
-    getUserChannel: async (memberID, asUser) => {
-        const channels = await module.exports.getAccessableChannels(asUser);
+    getUserChannel: async (memberID) => {
+        const channels = await module.exports.getAccessableChannels(true);
         match = channels.find(i => i.user && i.user === memberID); 
         return match;
     },
-
-    // paginatedFetch: async ([method, targetField], args, asUser, cooldown, cursor, collected) => {
-    //     // Set default values to undefined params
-    //     if (args.limit) args.limit = 200;
-    //     if (!cooldown) cooldown = 250;
-    //     if (cursor) args.cursor = cursor;
-    //     if (!collected) collected = [];
-
-    //     // Perform request
-    //     const res = await slackMethodRequest(method, args, asUser);
-        
-    //     if (!res || !res.ok || !res[targetField]) {
-    //         console.log('Response problem: ', res);
-    //     } else {
-    //         // Merge current batch of data with storage array 
-    //         collected = collected.concat(res[targetField]);
-
-    //         if (res['has_more'] && res['response_metadata']['next_cursor']) { // Continue recursion if there's a new cursor
-    //             cursor = res['response_metadata']['next_cursor'];
-                
-    //             console.log("Continuing; Collected so far:", collected.length);
-                
-    //             return delay(cooldown).then(async () => { // Commence recursion after the interval
-    //                 return await module.exports.paginatedFetch([method, targetField], args, asUser, cooldown, cursor, collected);
-    //             });
-    //         }
-    //     }
-
-    //     return collected; // Exit recursion, return storage array
-    // },
 
     paginatedRequest: async (method, args, asUser, cooldown, handleResponse, handlerArgs = []) => {
         var res = false;
@@ -156,7 +122,7 @@ module.exports = {
         return returns;
     },
 
-    fetchAndWriteMembers: async (args, writeToDir, asUser, cooldown) => {
+    fetchAndWriteMembers: async (args, writeToDir, cooldown) => {
         var method = 'conversations.members';
         
         async function handleResponse(res) {
@@ -164,22 +130,22 @@ module.exports = {
             return { members: res['members'] };
         }
 
-        const allMembers = await module.exports.paginatedRequest(method, args, asUser, cooldown, handleResponse);
+        const allMembers = await module.exports.paginatedRequest(method, args, true, cooldown, handleResponse);
         
         storeAsMJS({ members: allMembers }, writeToDir, 'members');
 
         return allMembers;
     },
 
-    fetchConversationInfo: async (conversationID, asUser) => {
+    fetchConversationInfo: async (conversationID) => {
         const method = 'conversations.info';
         const args = { channel: conversationID, pretty: 1 };
         
-        const res = await slackMethodRequest(method, args, asUser);
+        const res = await slackMethodRequest(method, args, true);
         return res.channel;
     },
 
-    fetchAndWriteMessages: async (args, writeToDir, asUser, cooldown, tTS) => {
+    fetchAndWriteMessages: async (args, writeToDir, cooldown, tTS) => {
         var method = 'conversations.history';
         
         ensureDir(writeToDir + '/messages');
@@ -222,7 +188,7 @@ module.exports = {
                     
                     if (threadTS && !output.threads.find(obj => threadTS === obj.thread_ts )) { // Check each message for thread data
                         let { cursor: _, ...newArgs } = args; // Copy all args minus the cursor
-                        module.exports.fetchAndWriteMessages(newArgs, `${writeToDir}/threads/${makeFilename(threadTS)}`, asUser, cooldown, threadTS); // Recurse for the thread, save to its own folder
+                        module.exports.fetchAndWriteMessages(newArgs, `${writeToDir}/threads/${makeFilename(threadTS)}`, cooldown, threadTS); // Recurse for the thread, save to its own folder
                         
                         output.threads.push( (({ thread_ts, reply_count, reply_users, latest_reply, is_locked }) => ({ thread_ts, reply_count, reply_users, latest_reply, is_locked }))(source) ); // Copy thread data from response to output object array
                     }
@@ -236,7 +202,7 @@ module.exports = {
 
         }
 
-        const returns = await module.exports.paginatedRequest(method, args, asUser, cooldown, handleResponse, [tTS, args]);
+        const returns = await module.exports.paginatedRequest(method, args, true, cooldown, handleResponse, [tTS, args]);
         
         storeAsMJS({ message_index: returns.messages }, `${writeToDir}/messages`, 'index');
 
@@ -247,7 +213,7 @@ module.exports = {
         // return { thread_index: threadIndex, message_index: messageIndex };
     },
 
-    fetchFileData: async (args, asUser, cooldown) => {
+    fetchFileData: async (args, cooldown) => {
         const method = 'files.list';
         args = { channel: args.channel, count: args.limit };
 
@@ -256,7 +222,7 @@ module.exports = {
 
         while (paging[0] <= paging[1]) {
             args.page = paging[0];
-            let resp = await slackMethodRequest(method, args, asUser);
+            let resp = await slackMethodRequest(method, args, true);
             
             if (resp && resp.paging && resp.paging.page && resp.paging.pages) {
                 files = files.concat(resp.files);
@@ -270,7 +236,7 @@ module.exports = {
         return files;
     },
 
-    fetchAndWriteFiles: async (files, dir, asUser, cooldown) => {
+    fetchAndWriteFiles: async (files, dir, cooldown) => {
         ensureDir(`${dir}/files`);
         
         const fileIndex = {};
@@ -295,13 +261,13 @@ module.exports = {
                     let fileFolder = `${dir}/files/${id}`; // Folder to write path to
                     
                     ensureDir(fileFolder);
-                    module.exports.downloadAttatchment(url, fileFolder, asUser, filename);
+                    module.exports.downloadAttatchment(url, fileFolder, true, filename);
                     
                     files[i].filename = filename;
 
                     newFiles[id] = filename;
 
-                    storeAsMJS({ data: files[i] }, fileFolder, `${makeFilename(filename)}_data`);
+                    storeAsMJS({ data: files[i] }, fileFolder, `${makeFilename(filename, true)}_data`);
 
                     await delay(cooldown);
                 } catch(error) {
@@ -316,26 +282,26 @@ module.exports = {
         return newFiles;
     },
 
-    generateConversationArchive: async (conversationID, asUser, dir, withAttatchments) => {
+    generateConversationArchive: async (conversationID, dir, withAttatchments) => {
         const cooldowns = { members: 100, messages: 250, fileIndex: 100, fileDownload: 150 }
         
         const args = { channel: conversationID, limit: 200, pretty: 1 };
         
-        const info = await module.exports.fetchConversationInfo(conversationID, asUser); // Get channel info
+        const info = await module.exports.fetchConversationInfo(conversationID); // Get channel info
         const writeToDir = dir + `/${labelChannel(info)}/${info.id}`; // Setup output directory
         
         ensureDir(writeToDir);
         storeAsMJS({ info: info }, writeToDir, 'info');
 
-        await module.exports.fetchAndWriteMembers(args, writeToDir, asUser, cooldowns.members); // Get channel members
-        await module.exports.fetchAndWriteMessages(args, writeToDir, asUser, cooldowns.messages);
+        await module.exports.fetchAndWriteMembers(args, writeToDir, cooldowns.members); // Get channel members
+        await module.exports.fetchAndWriteMessages(args, writeToDir, cooldowns.messages);
 
         if (withAttatchments) {
             // Attatchment archiving
             console.log('Starting attatchments');
             
-            const files = await module.exports.fetchFileData(args, asUser, cooldowns.fileIndex);
-            const channelFileIndex = await module.exports.fetchAndWriteFiles(files, dir, asUser, cooldowns.fileDownload);
+            const files = await module.exports.fetchFileData(args, cooldowns.fileIndex);
+            const channelFileIndex = await module.exports.fetchAndWriteFiles(files, dir, cooldowns.fileDownload);
 
             storeAsMJS({ files: channelFileIndex }, writeToDir, 'files');
         }
