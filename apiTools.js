@@ -4,6 +4,10 @@ const download = require('download');
 
 const tokens = require('./tokens.json');
 
+function log(stage, message) {
+    console.log(stage.toString().padEnd(19) + '| ' + message);
+}
+
 function delay(t, v) {
     return new Promise(function(resolve) { 
         setTimeout(resolve.bind(null, v), t)
@@ -41,8 +45,29 @@ function storeAsMJS(object, dir, filename) {
     fs.writeFileSync(dir + `/${filename}.mjs`, functions + variables);
 }
 
+function readStoredMJS(fileData) {
+    let output = {};
 
-async function req(url, options) {
+    let currentItem = false;
+    let currentData = '';
+
+    for (const line of fileData.split('\n')) {
+        if (line.startsWith('var data_')) {
+            if (currentItem) {
+                output[currentItem] = JSON.parse(currentData);
+            }
+            currentData = line.slice(-1);
+            currentItem = line.slice(9, -4);
+        } else if (currentItem) {
+            currentData += line;
+        }
+    }
+    output[currentItem] = JSON.parse(currentData);
+
+    return output;
+}
+
+async function request(url, options) {
     options.method = 'get';
     try {
         const response = await axios.get(url, options);
@@ -59,7 +84,7 @@ function getSlackAuthorizationHeader(asUser) {
 }
 
 async function slackMethodRequest(method, args, asUser) {
-    return await req('https://www.slack.com/api/' + method, { params: args, headers: getSlackAuthorizationHeader(asUser) });
+    return await request('https://www.slack.com/api/' + method, { params: args, headers: getSlackAuthorizationHeader(asUser) });
 }
 
 function labelChannel(channelInfo) {
@@ -78,8 +103,6 @@ function labelChannel(channelInfo) {
 module.exports = {
 
     downloadAttatchment: async (url_private, dir, filename) => {
-        var tokenKey = 'bot';
-        if (asUser) tokenKey = 'user';
         await download(url_private, dir, { headers: getSlackAuthorizationHeader(true) }, false, filename);
     },
 
@@ -147,19 +170,19 @@ module.exports = {
 
     fetchAndWriteMessages: async (args, writeToDir, cooldown, tTS) => {
         var method = 'conversations.history';
+        var mode = 'messages';
         
         ensureDir(writeToDir + '/messages');
-
+        
         if (tTS) {
             args.ts = tTS;
             method = 'conversations.replies';
+            mode = 'threads';
         } else {
             ensureDir(writeToDir + '/threads');
         }
         
         async function handleResponse(res, threadTS, args) {
-            // if (threadTS) console.log(res);
-            
             const data = res['messages'];
 
             const output = {
@@ -172,6 +195,8 @@ module.exports = {
                 ],
                 threads: [],
             }
+
+            log('Fetch Messages', `Mode: ${mode}, ${data.length} Starting from ${data[0].ts}`);
 
             storeAsMJS({ messages: data }, `${writeToDir}/messages`, makeFilename(output.messages[0].oldest));            
 
@@ -228,7 +253,8 @@ module.exports = {
                 files = files.concat(resp.files);
                 
                 paging = [resp.paging.page + 1, resp.paging.pages];
-
+                
+                console.log(`Fetch File Data | Page ${resp.paging.page}/${resp.paging.pages}`);
                 await delay(cooldown);
             }
         }
@@ -239,15 +265,19 @@ module.exports = {
     fetchAndWriteFiles: async (files, dir, cooldown) => {
         ensureDir(`${dir}/files`);
         
-        const fileIndex = {};
+        var fileIndex = {};
         const newFiles = {};
 
         if (fs.existsSync(`${dir}/files/index.mjs`)) {
-            let fileIndexData = fs.readFileSync(dir + '/files/index.mjs');
-            if (fileIndexData && fileIndexData.file_index) {
-                fileIndex = fileIndexData.file_index();
-            } else {
-                console.log(fileIndexData);
+            let fileIndexData = fs.readFileSync(`${dir}/files/index.mjs`, 'utf-8');
+            if (fileIndexData) {                
+                let fileIndexContainer = readStoredMJS(fileIndexData);
+                
+                if (fileIndexContainer.file_index) {
+
+                    fileIndex = fileIndexContainer.file_index;
+                    log('Write Files', `Existing file index found, ${Object.entries(fileIndex).length} items`);
+                } 
             }
         }
 
@@ -260,8 +290,10 @@ module.exports = {
                     let filename = url.split('/').slice(-1).join(''); // Get filename from url
                     let fileFolder = `${dir}/files/${id}`; // Folder to write path to
                     
+                    log('Write Files', `${i + 1}/${files.length}: ${url}`);
+                    
                     ensureDir(fileFolder);
-                    module.exports.downloadAttatchment(url, fileFolder, true, filename);
+                    module.exports.downloadAttatchment(url, fileFolder, filename);
                     
                     files[i].filename = filename;
 
@@ -273,11 +305,15 @@ module.exports = {
                 } catch(error) {
                     console.log(error);
                 }
+            } else if (url && id) {
+                log('Write Files', `${i + 1}/${files.length} Duplicate Item - Skipping ${url}`)
             }
         }
 
         Object.assign(fileIndex, newFiles);
         storeAsMJS({ file_index: fileIndex }, `${dir}/files`, 'index');
+
+        log('Write Files', `Index and ${Object.entries(newFiles).length} new files written to ${dir}/files`);
 
         return newFiles;
     },
@@ -298,8 +334,6 @@ module.exports = {
 
         if (withAttatchments) {
             // Attatchment archiving
-            console.log('Starting attatchments');
-            
             const files = await module.exports.fetchFileData(args, cooldowns.fileIndex);
             const channelFileIndex = await module.exports.fetchAndWriteFiles(files, dir, cooldowns.fileDownload);
 

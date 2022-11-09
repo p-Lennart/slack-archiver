@@ -37,7 +37,7 @@ async function testFunction() {
     // apiTools.getChannelMessages('<CHANNEL_ID>');
 
     // apiTools.fetchAndWriteMessages('<CHANNEL_ID>', './archives/channel/<CHANNEL_ID>', true);
-    (await apiTools.generateConversationArchive('<CHANNEL_ID>', true, './archives', true));
+    (await apiTools.generateConversationArchive('<CHANNEL_ID>', './archives', true));
     // analyzer(messages);
     // apiTools.downloadAttatchment('https://files.slack.com/files-pri/.../sample.png', './', true);
 }
