@@ -84,7 +84,7 @@
                 return [ jml('span', {}, message.text) ];
             }
 
-            function renderMessageFiles(message) { 
+            async function renderMessageFiles(message) { 
                 if (!message.files) return;
 
                 const result = [];
@@ -94,19 +94,24 @@
                         console.log('File missing permalink', file);
                         continue;
                     }
+                    
+                    const { file_index } = await import(`../archives/files/index.mjs`);
+                    
+                    let filename = file_index()[file.id]; 
 
-                    let filename = file.permalink.split('/').pop();
-                    var path = `../archives/${params.type}/${params.id}/files/${file.id}/${filename}`;
+                    var path = `../archives/files/${file.id}/${filename}`;
 
                     if (file.mimetype && file.mimetype.startsWith('image/')) {
                         result.push(jml('img', { src: path }));
+                    } else {
+                        result.push(jml('a', { href: path }, filename));
                     }
                 }
 
                 return result;
             }
 
-            function renderMessage([message, members], newGroup) {
+            async function renderMessage([message, members], newGroup) {
                 if (!message.type === 'message') return;
 
                 var className = 'message_container';
@@ -126,7 +131,7 @@
 
                 var content = renderMessageText(message);
                 if (message.files) {
-                    content.push(jml('figure', { class: 'message_files' }, renderMessageFiles(message)));
+                    content.push(jml('figure', { class: 'message_files' }, await renderMessageFiles(message)));
                 }
                 if (message.edited) {
                     content.push(jml('span', { class: 'message_editTag' }, '(edited)'));
@@ -151,7 +156,7 @@
                 const members = await getMembers(dir + '/members.mjs')
 
                 if (info()['is_im'] && info().user) {
-                    let mem = members().members.find(member => member.id === info().user);
+                    let mem = members.find(member => member.id === info().user);
                     
                     setTitle('@' + mem.name);
                     document.querySelector('#channelTitle').innerHTML = getPrettyName(mem);   
@@ -176,7 +181,7 @@
 
                     for (var i = messages.length - 1; i >= 0; i--) {
                         let newGroup = (!messages[i+1] || messages[i].user !== messages[i+1].user);
-                        document.querySelector('#messages').appendChild(renderMessage([messages[i], members], newGroup));
+                        document.querySelector('#messages').appendChild(await renderMessage([messages[i], members], newGroup));
                     }
                 }
 
