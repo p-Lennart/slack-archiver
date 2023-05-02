@@ -17,6 +17,28 @@
                 init(dir, params.ts);
             }
 
+            function makeFilename(string, removeLast) {
+                string = string.split('.');
+                if (removeLast) string = string.slice(0, -1);
+                return string.join('-');
+            }
+
+            function renderMemberUI(members) {
+                const memberNodes = [];
+                for (const i of members) {
+                    let mem = jml('div', { class: 'user'}, [
+                        jml('img', { class: 'user_picture', src: i.profile['image_72'] }, ),
+                        jml('div', { class: 'user_text'}, [
+                            jml('h3', {}, getPrettyName(i)),
+                            jml('h5', {}, '@' + i.name),
+                            jml('span', {}, i.profile.title),
+                        ]),
+                    ]);
+                    memberNodes.push(mem);
+                }
+                return memberNodes;
+            }
+
             function renderMessageText(message) {
                 if (message.blocks) {
                     try {
@@ -117,11 +139,19 @@
                 ])
             }
 
+            async function getMembers(channelMembersFileDir) {
+                const { members } = await import(channelMembersFileDir);
+                const { users } = await import('../archives/users/users-USLACKBOT.mjs');
+
+                return users().filter(user => members().members.includes(user.id));
+            }
+
             async function init(dir, ts) {
-                const { info, members, messages, threads } = await import(dir + '/data.mjs');
+                const { info } = await import(dir + '/info.mjs');
+                const members = await getMembers(dir + '/members.mjs')
 
                 if (info()['is_im'] && info().user) {
-                    let mem = members().find(member => member.id === info().user);
+                    let mem = members().members.find(member => member.id === info().user);
                     
                     setTitle('@' + mem.name);
                     document.querySelector('#channelTitle').innerHTML = getPrettyName(mem);   
@@ -130,15 +160,25 @@
                     document.querySelector('#channelTitle').innerHTML = info().name;
                     document.querySelector('#channelInfo').innerHTML = info().purpose.value.replace('\n', '<br>');    
                 }
-
-                for (var i = messages().length - 1; i >= 0; i--) {
-                    let newGroup = (!messages()[i+1] || messages()[i].user !== messages()[i+1].user);
-                    document.querySelector('#messages').appendChild(renderMessage([messages()[i], members()], newGroup));
+                
+                for (const memberNode of renderMemberUI(members)) {
+                    document.querySelector('#members').appendChild(memberNode);
                 }
                 
-                // for (const memberNode of memberUI(members())) {
-                //     document.querySelector('#members').appendChild(memberNode);
-                // }
+                const { message_index } = await import(dir + '/messages/index.mjs');
+
+                for (var j = message_index().length - 1; j >=0; j--) {
+                    let indexObj = message_index()[j];
+
+                    const messagesObj = await import(dir + '/messages/' + makeFilename(indexObj.oldest) + '.mjs')
+               
+                    const messages = messagesObj.messages();
+
+                    for (var i = messages.length - 1; i >= 0; i--) {
+                        let newGroup = (!messages[i+1] || messages[i].user !== messages[i+1].user);
+                        document.querySelector('#messages').appendChild(renderMessage([messages[i], members], newGroup));
+                    }
+                }
 
             }
 
