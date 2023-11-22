@@ -8,11 +8,10 @@ function log(stage, message) {
     console.log(stage.toString().padEnd(19) + '| ' + message);
 }
 
-function delay(t, v) {
-    return new Promise(function(resolve) { 
-        setTimeout(resolve.bind(null, v), t)
-    });
- } // Stolen from https://stackoverflow.com/questions/39538473/using-settimeout-on-promise-chain
+const delay = (delayInms) => {
+    return new Promise(resolve => setTimeout(resolve, delayInms));
+} // Stolen from https://stackoverflow.com/questions/17883692/how-to-set-time-delay-in-javascript
+// Previously stolen from https://stackoverflow.com/questions/39538473/using-settimeout-on-promise-chain
 
 function ensureDir(dir) {
     if (!fs.existsSync(dir)) {
@@ -107,7 +106,7 @@ module.exports = {
     },
 
     getAccessableChannels: async (asUser) => {
-        const res = await slackMethodRequest('conversations.list', { types: 'public_channel,private_channel,im', pretty: 1 }, asUser); 
+        const res = await slackMethodRequest('conversations.list', { types: 'public_channel,private_channel,mpim,im', pretty: 1 }, asUser); 
         return res.channels;
     },
 
@@ -124,7 +123,14 @@ module.exports = {
         do {
             res = await slackMethodRequest(method, args, asUser);
             
-            if (res && res.has_more) {
+            if (!res) {
+                res = 'temp';
+                console.log('re loop');
+                await delay(5000);
+                continue;
+            }
+
+            if (res.has_more) {
                 args.cursor = res['response_metadata']['next_cursor'];
             }
 
@@ -141,6 +147,7 @@ module.exports = {
             }           
         }
         while (res && res['has_more'] && res['response_metadata']['next_cursor']);
+        console.log('exited do while loop');
         // return { thread_index: threadIndex, message_index: messageIndex };
         return returns;
     },
@@ -184,6 +191,7 @@ module.exports = {
         
         async function handleResponse(res, threadTS, args) {
             const data = res['messages'];
+            if (!data) console.log(res);
 
             const output = {
                 messages: [
@@ -214,7 +222,7 @@ module.exports = {
                     if (threadTS && !output.threads.find(obj => threadTS === obj.thread_ts )) { // Check each message for thread data
                         let { cursor: _, ...newArgs } = args; // Copy all args minus the cursor
                         module.exports.fetchAndWriteMessages(newArgs, `${writeToDir}/threads/${makeFilename(threadTS)}`, cooldown, threadTS); // Recurse for the thread, save to its own folder
-                        
+                        await delay(cooldown / 2);
                         output.threads.push( (({ thread_ts, reply_count, reply_users, latest_reply, is_locked }) => ({ thread_ts, reply_count, reply_users, latest_reply, is_locked }))(source) ); // Copy thread data from response to output object array
                     }
 
@@ -319,7 +327,7 @@ module.exports = {
     },
 
     generateConversationArchive: async (conversationID, dir, withAttatchments) => {
-        const cooldowns = { members: 100, messages: 250, fileIndex: 100, fileDownload: 150 }
+        const cooldowns = { members: 500, messages: 700, fileIndex: 100, fileDownload: 150 }
         
         const args = { channel: conversationID, limit: 200, pretty: 1 };
         
