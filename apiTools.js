@@ -119,32 +119,42 @@ module.exports = {
     paginatedRequest: async (method, args, asUser, cooldown, handleResponse, handlerArgs = []) => {
         var res = false;
         const returns = {};
+        let iterations = 0;
 
         do {
-            res = await slackMethodRequest(method, args, asUser);
+            iterations++; 
             
-            if (!res) {
-                res = 'temp';
-                console.log('re loop');
-                await delay(5000);
-                continue;
-            }
+            try {
+                res = await slackMethodRequest(method, args, asUser);
+            } catch(err) {
+                console.log(err, "|||||||||||||||| ERRRORRRR");
+            } finally {
 
-            if (res.has_more) {
-                args.cursor = res['response_metadata']['next_cursor'];
-            }
-
-            await delay(cooldown);
-            
-            const handled = await handleResponse(res, ...handlerArgs, args);
-
-            for (const [key, value] of Object.entries(handled)) {
-                if (returns[key]) {
-                    returns[key] = returns[key].concat(value); 
-                } else {
-                    returns[key] = value;
+                if (!res || res.error) {
+                    res = 'temp';
+                    if (res.error) console.log('res ERR', res.error);
+                    console.log('re loop, delaying for ', 5 * (2 ^ iterations));
+                    await delay(5000 * (2 ^ iterations));
+                    continue;
                 }
-            }           
+
+                if (res.has_more) {
+                    args.cursor = res['response_metadata']['next_cursor'];
+                }
+
+                await delay(cooldown);
+                
+                const handled = await handleResponse(res, ...handlerArgs, args);
+
+                for (const [key, value] of Object.entries(handled)) {
+                    if (returns[key]) {
+                        returns[key] = returns[key].concat(value); 
+                    } else {
+                        returns[key] = value;
+                    }
+                }           
+                
+            }
         }
         while (res && res['has_more'] && res['response_metadata']['next_cursor']);
         console.log('exited do while loop');
@@ -191,7 +201,7 @@ module.exports = {
         
         async function handleResponse(res, threadTS, args) {
             const data = res['messages'];
-            if (!data) console.log(res);
+            if (!data) console.log(res, "||||| FAILED");
 
             const output = {
                 messages: [
