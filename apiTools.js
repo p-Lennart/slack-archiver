@@ -68,12 +68,12 @@ function readStoredMJS(fileData) {
 
 async function request(url, options) {
     options.method = 'get';
-    try {
+    // try {
         const response = await axios.get(url, options);
         return response.data;
-    } catch (error) {
-        return console.log(error);
-    }
+    // } catch (error) {
+        // return console.log(error);
+    // }
 }
 
 function getSlackAuthorizationHeader(asUser) {
@@ -133,8 +133,8 @@ module.exports = {
                 if (!res || res.error) {
                     res = 'temp';
                     if (res.error) console.log('res ERR', res.error);
-                    console.log('re loop, delaying for ', 5 * (2 ^ iterations));
-                    await delay(5000 * (2 ^ iterations));
+                    console.log('re loop, delaying for ', 5 * (2 ** iterations));
+                    await delay(5000 * (2 ** iterations));
                     continue;
                 }
 
@@ -263,17 +263,26 @@ module.exports = {
         var files = [];
         var paging = [1, 1];
 
+        let iterations = 0;
+
         while (paging[0] <= paging[1]) {
-            args.page = paging[0];
-            let resp = await slackMethodRequest(method, args, true);
-            
-            if (resp && resp.paging && resp.paging.page && resp.paging.pages) {
-                files = files.concat(resp.files);
+            iterations++;
+            try {
+                args.page = paging[0];
+                let resp = await slackMethodRequest(method, args, true);
                 
-                paging = [resp.paging.page + 1, resp.paging.pages];
-                
-                console.log(`Fetch File Data | Page ${resp.paging.page}/${resp.paging.pages}`);
-                await delay(cooldown);
+                if (resp && resp.paging && resp.paging.page && resp.paging.pages) {
+                    files = files.concat(resp.files);
+                    
+                    paging = [resp.paging.page + 1, resp.paging.pages];
+                    
+                    console.log(`Fetch File Data | Page ${resp.paging.page}/${resp.paging.pages}`);
+                    await delay(cooldown);
+                }
+
+            } catch(err) {
+                console.log(err, "||||FILE ERR, WAIT ", cooldown * (2 ** iterations));
+                await delay(cooldown * (2 ** iterations));
             }
         }
         

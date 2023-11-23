@@ -61,8 +61,14 @@ async function testFunction() {
 
     console.log(channels);
 
-    for (let id of channels) {
-        console.log('ONTO ', id);
+    for (let i = 0; i < channels.length; i++) {
+        let id = channels[i]
+
+        console.log('======================\nONTO ', id);
+        console.log('Skipped channels: ', skippedChannels);
+        console.log('-----------------------\nRemaining channels: ', channels.slice(i));
+        console.log('=========================');
+
         try {
             await apiTools.generateConversationArchive(id, './archives', true);
         } catch {
