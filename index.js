@@ -1,6 +1,4 @@
 const fs = require('fs');
-const { generateConversationArchive } = require('./apiTools');
-
 const apiTools = require('./apiTools');
 
 function analyzer(messages) {
@@ -10,7 +8,7 @@ function analyzer(messages) {
     var latest = 0;
     var count = 0;
     
-    for (i = messages.length - 1; i >= 0; i--) {
+    for (let i = messages.length - 1; i >= 0; i--) {
         let t = messages[i].ts;
         console.log(t - latest);
         if (t && t - latest > 600.0) {
@@ -23,24 +21,46 @@ function analyzer(messages) {
             latest = t;
         }
         count++;
-        //if (i < messages.length - 0) break;
     }
 
     results.sort((a, b) => b.period - a.period);
     console.log(results);
 }
 
-async function testFunction() {
-    // apiTools.getUsers(true);
-    // console.log(await apiTools.getUserChannel('<USER_ID>', true));
-    // apiTools.getChannelMessages('<CHANNEL_ID>', true);
-    // apiTools.getChannelMessages('<CHANNEL_ID>');
+/**
+ * Example runner demonstrating the core apiTools workflows.
+ * Replace placeholder variables with your actual Slack channel/user IDs.
+ */
+async function run() {
+    const channelId = '<CHANNEL_ID>';      // e.g. 'C0123456789' (channel) or 'D0123456789' (DM)
+    const userId    = '<USER_ID>';         // e.g. 'U0123456789'
+    const outputDir = './archives';
+    const sampleFileUrl = 'https://files.slack.com/files-pri/.../image.png';
 
-    // apiTools.fetchAndWriteMessages('<CHANNEL_ID>', './archives/channel/<CHANNEL_ID>', true);
-    (await apiTools.generateConversationArchive('<CHANNEL_ID>', './archives', true));
+    // 1. Channel Discovery: List accessible public channels, private channels, and DMs
+    // const channels = await apiTools.getAccessableChannels(true);
+    // console.log('Accessible channels:', channels);
+
+    // 2. DM Channel Lookup: Find the DM conversation channel for a specific user ID
+    // const userChannel = await apiTools.getUserChannel(userId);
+    // console.log('User DM channel:', userChannel);
+
+    // 3. Conversation Details: Fetch channel metadata, topic, and purpose
+    // const channelInfo = await apiTools.fetchConversationInfo(channelId);
+    // console.log('Channel Info:', channelInfo);
+
+    // 4. Granular Extraction: Fetch and store members and message history separately
+    // await apiTools.fetchAndWriteMembers({ channel: channelId, limit: 200 }, `${outputDir}/manual`, 100);
+    // await apiTools.fetchAndWriteMessages({ channel: channelId, limit: 200 }, `${outputDir}/manual`, 250);
+
+    // 5. Full Archive Pipeline: Comprehensive archive of info, members, messages, threads, and attachments
+    await apiTools.generateConversationArchive(channelId, outputDir, true);
+
+    // 6. Direct File Download: Download a single private file attachment using Bearer auth
+    // await apiTools.downloadAttatchment(sampleFileUrl, outputDir, 'downloaded_image.png');
+
+    // 7. Message Analytics: Analyze conversation activity bursts and inactivity periods (> 10 mins)
     // analyzer(messages);
-    // apiTools.downloadAttatchment('https://files.slack.com/files-pri/.../sample.png', './', true);
 }
 
-// './archives'
-testFunction();
+run();
