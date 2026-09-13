@@ -2,3 +2,8 @@ archives/*
 .hintrc
 apiTools.js.old
 tokens.json
+viewer/VIEWERDATA/*
+!viewer/VIEWERDATA/placeholder.txt
+VIEWERDATA_MAP.json
+/node_modules
+/node_modules
