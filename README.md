@@ -4,51 +4,6 @@ A lightweight, self-contained system for archiving Slack workspaces—conversati
 
 ---
 
-## Architectural Philosophy & Intentional Design Choices
-
-Rather than relying on heavy modern frameworks, off-the-shelf SDKs, or database engines, this project was developed from first principles as an intentional exercise in raw browser standards, native DOM manipulation, and bespoke API pipelines:
-
-- **`jml` (JS Markup Language) over React / Virtual DOM**:
-  Instead of pulling in React, ReactDOM, JSX precompilers, and Babel, the UI is built entirely using [`viewer/jml.mjs`](file:///C:/Users/fiery/GitHub/slack-archiver/viewer/jml.mjs)—a custom 35-line hyperscript-style micro-library. It constructs native DOM elements directly (`document.createElement`, `setAttribute`, `addEventListener`, `appendChild`). This avoids runtime overhead, eliminates bundling pipelines, and provides direct control over DOM lifecycle and rendering performance.
-
-- **Executable `.mjs` Modules as a Data Store**:
-  Instead of writing static JSON dumps or persisting to SQLite, the archiver serializes structured conversation data directly into executable JavaScript ES modules (`export function messages() { return data_messages; }`). This allows the browser client to ingest archive datasets on-demand via native dynamic `import()`, avoiding manual AJAX/`fetch()` plumbing and sidestepping local `file://` fetch restrictions.
-
-- **Zero-Build, Native Browser Runtime**:
-  The viewer has no Webpack, Vite, Rollup, or transpilation layer. It runs on pure HTML5, vanilla CSS, and browser-standard ES modules. Long-term archival tools benefit from zero-dependency UI runtimes, ensuring that archives remain readable decades later without worrying about stale build tooling.
-
-- **Bespoke REST Pipeline over Official Slack SDKs**:
-  Rather than abstracting API calls away behind `@slack/web-api`, [`apiTools.js`](file:///C:/Users/fiery/GitHub/slack-archiver/apiTools.js) implements custom HTTP request handling, token management, and a reusable cursor-based paginator (`paginatedRequest`). Rate-limiting cooldowns are tuned per method (channel info, message history, thread replies, and binary asset streaming).
-
-- **Table-Driven Chat Layout**:
-  Message rendering in [`viewer/viewer.htm`](file:///C:/Users/fiery/GitHub/slack-archiver/viewer/viewer.htm) uses a fixed-layout HTML `<table>` rather than flexbox/grid lists. This guarantees strict columnar alignment between timestamps, author names, and message payloads across wide viewports, while supporting "sequel" grouping (collapsing consecutive sender tags from the same author).
-
----
-
-## Repository Structure
-
-```
-slack-archiver/
-├── apiTools.js           # Core Slack API interactions, pagination, serialization
-├── requests.js           # Modularized HTTP request helpers
-├── index.js              # Archival orchestrator and conversation analyzer
-├── build.mjs             # Viewer data mapper & local HTTP server launcher
-├── mapViewerData.mjs     # Validator & directory tree scanner for Slack exports
-├── package.json          # Project configuration, scripts, and dependencies
-│
-└── viewer/               # Zero-build browser viewer
-    ├── index.htm         # Channel hub & navigation dashboard
-    ├── viewer.htm        # Core message stream & thread viewer
-    ├── jml.mjs           # Custom native DOM builder micro-library
-    ├── main.css          # Viewer stylesheet (collapsible accordions, chat tables)
-    ├── dateWidget.mjs    # Hierarchical Year/Month/Day accordion navigation
-    ├── memberWidget.mjs  # Channel member directory rendering
-    └── VIEWERDATA/       # Directory for Slack exports & archive datasets
-        └── placeholder.txt
-```
-
----
-
 ## Archiving Implementation
 
 The archiver operates via Node.js and orchestrates full workspace extraction into structured directories:
@@ -91,6 +46,51 @@ The viewer provides an offline exploration experience for both raw channel archi
   - Highlights inline code, URLs, and edited tags.
 - Renders inline image attachments directly from local archived assets.
 - Applies "sequel" styling to group consecutive posts from the same author.
+
+---
+
+## Architectural Philosophy & Intentional Design Choices
+
+Rather than relying on heavy modern frameworks, off-the-shelf SDKs, or database engines, this project was developed from first principles as an intentional exercise in raw browser standards, native DOM manipulation, and bespoke API pipelines:
+
+- **`jml` (JS Markup Language) over React / Virtual DOM**:
+  Instead of pulling in React, ReactDOM, JSX precompilers, and Babel, the UI is built entirely using [`viewer/jml.mjs`](file:///C:/Users/fiery/GitHub/slack-archiver/viewer/jml.mjs)—a custom 35-line hyperscript-style micro-library. It constructs native DOM elements directly (`document.createElement`, `setAttribute`, `addEventListener`, `appendChild`). This avoids runtime overhead, eliminates bundling pipelines, and provides direct control over DOM lifecycle and rendering performance.
+
+- **Executable `.mjs` Modules as a Data Store**:
+  Instead of writing static JSON dumps or persisting to SQLite, the archiver serializes structured conversation data directly into executable JavaScript ES modules (`export function messages() { return data_messages; }`). This allows the browser client to ingest archive datasets on-demand via native dynamic `import()`, avoiding manual AJAX/`fetch()` plumbing and sidestepping local `file://` fetch restrictions.
+
+- **Zero-Build, Native Browser Runtime**:
+  The viewer has no Webpack, Vite, Rollup, or transpilation layer. It runs on pure HTML5, vanilla CSS, and browser-standard ES modules. Long-term archival tools benefit from zero-dependency UI runtimes, ensuring that archives remain readable decades later without worrying about stale build tooling.
+
+- **Bespoke REST Pipeline over Official Slack SDKs**:
+  Rather than abstracting API calls away behind `@slack/web-api`, [`apiTools.js`](file:///C:/Users/fiery/GitHub/slack-archiver/apiTools.js) implements custom HTTP request handling, token management, and a reusable cursor-based paginator (`paginatedRequest`). Rate-limiting cooldowns are tuned per method (channel info, message history, thread replies, and binary asset streaming).
+
+- **Table-Driven Chat Layout**:
+  Message rendering in [`viewer/viewer.htm`](file:///C:/Users/fiery/GitHub/slack-archiver/viewer/viewer.htm) uses a fixed-layout HTML `<table>` rather than flexbox/grid lists. This guarantees strict columnar alignment between timestamps, author names, and message payloads across wide viewports, while supporting "sequel" grouping (collapsing consecutive sender tags from the same author).
+
+---
+
+## Repository Structure
+
+```
+slack-archiver/
+├── apiTools.js           # Core Slack API interactions, pagination, serialization
+├── requests.js           # Modularized HTTP request helpers
+├── index.js              # Archival orchestrator and conversation analyzer
+├── build.mjs             # Viewer data mapper & local HTTP server launcher
+├── mapViewerData.mjs     # Validator & directory tree scanner for Slack exports
+├── package.json          # Project configuration, scripts, and dependencies
+│
+└── viewer/               # Zero-build browser viewer
+    ├── index.htm         # Channel hub & navigation dashboard
+    ├── viewer.htm        # Core message stream & thread viewer
+    ├── jml.mjs           # Custom native DOM builder micro-library
+    ├── main.css          # Viewer stylesheet (collapsible accordions, chat tables)
+    ├── dateWidget.mjs    # Hierarchical Year/Month/Day accordion navigation
+    ├── memberWidget.mjs  # Channel member directory rendering
+    └── VIEWERDATA/       # Directory for Slack exports & archive datasets
+        └── placeholder.txt
+```
 
 ---
 
